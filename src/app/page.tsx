@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Wallet, ShieldCheck, Users, Activity, Loader2, Sparkles, LogOut, CheckCircle2, User, IdCard } from "lucide-react";
 import { db, collection, addDoc, getDocs, query, orderBy } from "@/lib/firebase";
-import { ethers, BrowserProvider, Contract } from "ethers";
+import { BrowserProvider, Contract } from "ethers";
 
 declare global {
   interface Window {
@@ -63,7 +63,8 @@ export default function Home() {
         } else {
           loadMockData();
         }
-      } catch (error) {
+      } catch (e) {
+        console.error("Firebase load error:", e);
         console.warn("Firebase not fully configured yet, loading mock data for demo.");
         loadMockData();
       }
@@ -135,7 +136,8 @@ export default function Home() {
       
       try {
         await addDoc(collection(db, "members"), newMember);
-      } catch (err) {
+      } catch (e) {
+        console.error("Firebase save error:", e);
         console.warn("Firebase not configured, skipping actual DB save but updating UI state.");
       }
       
