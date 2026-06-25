@@ -6,6 +6,12 @@ import { Wallet, ShieldCheck, Users, Activity, Loader2, Sparkles, LogOut, CheckC
 import { db, collection, addDoc, getDocs, query, orderBy } from "@/lib/firebase";
 import { ethers, BrowserProvider, Contract } from "ethers";
 
+declare global {
+  interface Window {
+    ethereum?: any;
+  }
+}
+
 // Types
 type Member = {
   address: string;
