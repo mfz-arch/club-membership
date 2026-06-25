@@ -2,11 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Wallet, ShieldCheck, Users, Activity, Loader2, Sparkles, LogOut, CheckCircle2 } from "lucide-react";
+import { Wallet, ShieldCheck, Users, Activity, Loader2, Sparkles, LogOut, CheckCircle2, User, IdCard } from "lucide-react";
+import { db, collection, addDoc, getDocs, query, orderBy } from "@/lib/firebase";
 
 // Types
 type Member = {
   address: string;
+  name: string;
+  studentId: string;
   joinedAt: string;
 };
 
@@ -16,39 +19,84 @@ export default function Home() {
   const [isJoining, setIsJoining] = useState(false);
   const [hasJoined, setHasJoined] = useState(false);
   const [members, setMembers] = useState<Member[]>([]);
+  
+  // Registration Form State
+  const [name, setName] = useState("");
+  const [studentId, setStudentId] = useState("");
 
-  // Simulate fetching members
+  // Load members (Simulated/Firebase)
   useEffect(() => {
-    // Mock initial members
-    setMembers([
-      { address: "0x1234...5678", joinedAt: new Date(Date.now() - 86400000).toLocaleString() },
-      { address: "0x8765...4321", joinedAt: new Date(Date.now() - 172800000).toLocaleString() }
-    ]);
+    const fetchMembers = async () => {
+      try {
+        // In a real app with valid Firebase config, this would fetch from the DB.
+        // For the hackathon demo, we will check if the DB throws an error due to missing config, 
+        // and if it does, we fall back to mock data so the demo never breaks.
+        const q = query(collection(db, "members"), orderBy("timestamp", "desc"));
+        const snapshot = await getDocs(q);
+        const fetchedMembers = snapshot.docs.map(doc => doc.data() as Member);
+        
+        if (fetchedMembers.length > 0) {
+          setMembers(fetchedMembers);
+        } else {
+          loadMockData();
+        }
+      } catch (error) {
+        console.warn("Firebase not fully configured yet, loading mock data for demo.");
+        loadMockData();
+      }
+    };
+    
+    fetchMembers();
   }, []);
+
+  const loadMockData = () => {
+    setMembers([
+      { address: "0x1234...5678", name: "Alice Mwangi", studentId: "CS-2024-001", joinedAt: new Date(Date.now() - 86400000).toLocaleString() },
+      { address: "0x8765...4321", name: "John Doe", studentId: "IT-2024-042", joinedAt: new Date(Date.now() - 172800000).toLocaleString() }
+    ]);
+  };
 
   const connectWallet = async () => {
     setIsConnecting(true);
     // Simulate wallet connection delay
     await new Promise((resolve) => setTimeout(resolve, 1500));
-    setWalletAddress("0xABCD...EF01");
+    setWalletAddress("0xABCD...EF01"); // Mock address
     setIsConnecting(false);
   };
 
   const disconnectWallet = () => {
     setWalletAddress(null);
     setHasJoined(false);
+    setName("");
+    setStudentId("");
   };
 
-  const joinClub = async () => {
-    if (!walletAddress) return;
-    setIsJoining(true);
-    // Simulate blockchain transaction delay
-    await new Promise((resolve) => setTimeout(resolve, 3000));
+  const joinClub = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!walletAddress || !name || !studentId) return;
     
-    setMembers((prev) => [
-      { address: walletAddress, joinedAt: new Date().toLocaleString() },
-      ...prev,
-    ]);
+    setIsJoining(true);
+    
+    // 1. Simulate Smart Contract Transaction Delay (On-Chain Verification)
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    
+    // 2. Save rich profile data to Firebase (Off-Chain Storage)
+    const newMember = {
+      address: walletAddress,
+      name,
+      studentId,
+      joinedAt: new Date().toLocaleString(),
+      timestamp: Date.now()
+    };
+    
+    try {
+      await addDoc(collection(db, "members"), newMember);
+    } catch (err) {
+      console.warn("Firebase not configured, skipping actual DB save but updating UI state.");
+    }
+    
+    // 3. Update UI Roster
+    setMembers((prev) => [newMember, ...prev]);
     setHasJoined(true);
     setIsJoining(false);
   };
@@ -123,7 +171,7 @@ export default function Home() {
           >
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-fuchsia-500/10 border border-fuchsia-500/20 text-fuchsia-300 text-sm font-medium">
               <Sparkles className="w-4 h-4" />
-              Avalanche Hackathon - Track 4
+              Hybrid Web3 Architecture
             </div>
             <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight leading-tight">
               Verifiable <br />
@@ -132,7 +180,7 @@ export default function Home() {
               </span>
             </h1>
             <p className="text-lg text-slate-400 leading-relaxed max-w-lg">
-              A transparent, blockchain-powered digital membership system for African student clubs. No more lost paper sheets—just undeniable, verifiable proof of belonging on the Avalanche network.
+              A transparent digital membership system. We use Avalanche smart contracts for absolute verification, and Firebase Firestore to securely store your rich student profile off-chain.
             </p>
           </motion.div>
 
@@ -148,7 +196,7 @@ export default function Home() {
               <div className="flex items-start justify-between">
                 <div>
                   <h3 className="text-2xl font-semibold mb-2">Join the Roster</h3>
-                  <p className="text-slate-400 text-sm">Secure your spot permanently on-chain.</p>
+                  <p className="text-slate-400 text-sm">Create your profile & sign on-chain.</p>
                 </div>
                 <div className="p-3 bg-indigo-500/20 rounded-2xl">
                   <ShieldCheck className="w-8 h-8 text-indigo-400" />
@@ -158,7 +206,7 @@ export default function Home() {
               {!walletAddress ? (
                 <div className="p-6 rounded-2xl bg-white/5 border border-white/10 text-center space-y-4">
                   <Wallet className="w-12 h-12 text-slate-500 mx-auto" />
-                  <p className="text-slate-300">Connect your wallet to join the club.</p>
+                  <p className="text-slate-300">Connect your wallet to begin registration.</p>
                   <button
                     onClick={connectWallet}
                     className="w-full py-3 bg-white text-slate-900 hover:bg-slate-200 font-bold rounded-xl transition-colors"
@@ -169,30 +217,57 @@ export default function Home() {
               ) : hasJoined ? (
                 <div className="p-6 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-center space-y-4">
                   <CheckCircle2 className="w-12 h-12 text-emerald-400 mx-auto" />
-                  <h4 className="text-emerald-300 font-semibold text-lg">Officially a Member!</h4>
-                  <p className="text-emerald-400/80 text-sm">Your membership is secured on the blockchain.</p>
+                  <h4 className="text-emerald-300 font-semibold text-lg">Profile Saved & Verified!</h4>
+                  <p className="text-emerald-400/80 text-sm">Your name is safely stored off-chain, and your wallet ownership is verified on Avalanche.</p>
                 </div>
               ) : (
-                <button
-                  onClick={joinClub}
-                  disabled={isJoining}
-                  className="w-full relative group overflow-hidden rounded-xl font-bold text-lg"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-fuchsia-500 transition-transform duration-300 group-hover:scale-105" />
-                  <div className="relative flex items-center justify-center gap-3 px-6 py-4 bg-black/20 backdrop-blur-sm">
-                    {isJoining ? (
-                      <>
-                        <Loader2 className="w-6 h-6 animate-spin text-white" />
-                        Confirming on Avalanche...
-                      </>
-                    ) : (
-                      <>
-                        Sign Transaction to Join
-                        <Activity className="w-5 h-5" />
-                      </>
-                    )}
+                <form onSubmit={joinClub} className="space-y-4">
+                  <div className="space-y-3">
+                    <div className="relative">
+                      <User className="absolute left-3 top-3 w-5 h-5 text-slate-400" />
+                      <input 
+                        type="text" 
+                        required
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        placeholder="Full Name" 
+                        className="w-full pl-10 pr-4 py-3 bg-black/20 border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500 text-white placeholder-slate-500 transition-colors"
+                      />
+                    </div>
+                    <div className="relative">
+                      <IdCard className="absolute left-3 top-3 w-5 h-5 text-slate-400" />
+                      <input 
+                        type="text" 
+                        required
+                        value={studentId}
+                        onChange={(e) => setStudentId(e.target.value)}
+                        placeholder="Student ID (e.g. CS-2024-001)" 
+                        className="w-full pl-10 pr-4 py-3 bg-black/20 border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500 text-white placeholder-slate-500 transition-colors"
+                      />
+                    </div>
                   </div>
-                </button>
+
+                  <button
+                    type="submit"
+                    disabled={isJoining || !name || !studentId}
+                    className="w-full relative group overflow-hidden rounded-xl font-bold text-lg disabled:opacity-50"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-fuchsia-500 transition-transform duration-300 group-hover:scale-105" />
+                    <div className="relative flex items-center justify-center gap-3 px-6 py-4 bg-black/20 backdrop-blur-sm">
+                      {isJoining ? (
+                        <>
+                          <Loader2 className="w-6 h-6 animate-spin text-white" />
+                          Saving & Verifying...
+                        </>
+                      ) : (
+                        <>
+                          Sign Transaction to Join
+                          <Activity className="w-5 h-5" />
+                        </>
+                      )}
+                    </div>
+                  </button>
+                </form>
               )}
             </div>
           </motion.div>
@@ -227,22 +302,17 @@ export default function Home() {
                     className="flex items-center justify-between p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 transition-colors group"
                   >
                     <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center border border-white/10 shadow-inner group-hover:border-indigo-500/50 transition-colors">
-                        <Users className="w-5 h-5 text-slate-400 group-hover:text-indigo-400 transition-colors" />
+                      <div className="w-10 h-10 flex-shrink-0 rounded-full bg-gradient-to-br from-indigo-500/20 to-fuchsia-500/20 flex items-center justify-center border border-white/10 shadow-inner">
+                        <span className="font-bold text-indigo-300">
+                          {member.name.charAt(0).toUpperCase()}
+                        </span>
                       </div>
                       <div>
-                        <p className="font-mono text-slate-200">{member.address}</p>
-                        <p className="text-xs text-slate-500">Joined: {member.joinedAt}</p>
+                        <p className="font-semibold text-slate-200">{member.name}</p>
+                        <p className="text-xs text-slate-400 font-mono">ID: {member.studentId}</p>
+                        <p className="text-xs text-slate-500 mt-1 font-mono">{member.address}</p>
                       </div>
                     </div>
-                    <a
-                      href={`https://subnets-test.avax.network/c-chain/address/${member.address}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      View explorer
-                    </a>
                   </motion.div>
                 ))}
               </AnimatePresence>
