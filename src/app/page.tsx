@@ -15,8 +15,8 @@ type Member = {
 };
 
 // --- WEB3 CONFIGURATION ---
-// REPLACE THIS with your deployed contract address from Remix!
-const CONTRACT_ADDRESS = "0xYOUR_DEPLOYED_CONTRACT_ADDRESS_HERE";
+// The deployed contract address from Remix
+const CONTRACT_ADDRESS = "0x2f46e39c4702c225C7E65dFFe741c9c7c63C1540";
 
 // The ABI matches the ClubMembership.sol functions
 const CONTRACT_ABI = [
