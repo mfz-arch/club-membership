@@ -108,11 +108,6 @@ export default function Home() {
     e.preventDefault();
     if (!walletAddress || !name || !studentId) return;
     
-    if (CONTRACT_ADDRESS === "0xYOUR_DEPLOYED_CONTRACT_ADDRESS_HERE") {
-      alert("Please deploy the smart contract first and update the CONTRACT_ADDRESS in page.tsx!");
-      return;
-    }
-
     setIsJoining(true);
     
     try {
