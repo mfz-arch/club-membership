@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Wallet, ShieldCheck, Users, Activity, Loader2, Sparkles, LogOut, CheckCircle2, User, IdCard } from "lucide-react";
 import { db, collection, addDoc, getDocs, query, orderBy } from "@/lib/firebase";
+import { ethers, BrowserProvider, Contract } from "ethers";
 
 // Types
 type Member = {
@@ -12,6 +13,18 @@ type Member = {
   studentId: string;
   joinedAt: string;
 };
+
+// --- WEB3 CONFIGURATION ---
+// REPLACE THIS with your deployed contract address from Remix!
+const CONTRACT_ADDRESS = "0xYOUR_DEPLOYED_CONTRACT_ADDRESS_HERE";
+
+// The ABI matches the ClubMembership.sol functions
+const CONTRACT_ABI = [
+  "function joinClub() public",
+  "function getMemberCount() public view returns (uint256)",
+  "function getAllMembers() public view returns (address[] memory)",
+  "event MemberJoined(address indexed memberAddress, uint256 timestamp)"
+];
 
 export default function Home() {
   const [isConnecting, setIsConnecting] = useState(false);
@@ -53,11 +66,28 @@ export default function Home() {
     ]);
   };
 
+  // --- REAL WEB3 CONNECTION ---
   const connectWallet = async () => {
+    if (typeof window === "undefined" || !window.ethereum) {
+      alert("Please install Core Wallet or MetaMask extension to connect!");
+      return;
+    }
+
     setIsConnecting(true);
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    setWalletAddress("0xABCD...EF01");
-    setIsConnecting(false);
+    try {
+      const provider = new BrowserProvider(window.ethereum);
+      // Request access to the user's wallet
+      const accounts = await provider.send("eth_requestAccounts", []);
+      
+      if (accounts.length > 0) {
+        setWalletAddress(accounts[0]);
+      }
+    } catch (error) {
+      console.error("User rejected request or error occurred", error);
+      alert("Connection failed. Did you approve the request in your wallet?");
+    } finally {
+      setIsConnecting(false);
+    }
   };
 
   const disconnectWallet = () => {
@@ -67,31 +97,60 @@ export default function Home() {
     setStudentId("");
   };
 
+  // --- REAL WEB3 TRANSACTION ---
   const joinClub = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!walletAddress || !name || !studentId) return;
     
+    if (CONTRACT_ADDRESS === "0xYOUR_DEPLOYED_CONTRACT_ADDRESS_HERE") {
+      alert("Please deploy the smart contract first and update the CONTRACT_ADDRESS in page.tsx!");
+      return;
+    }
+
     setIsJoining(true);
     
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    
-    const newMember = {
-      address: walletAddress,
-      name,
-      studentId,
-      joinedAt: new Date().toLocaleString(),
-      timestamp: Date.now()
-    };
-    
     try {
-      await addDoc(collection(db, "members"), newMember);
-    } catch (err) {
-      console.warn("Firebase not configured, skipping actual DB save but updating UI state.");
+      // 1. Send Smart Contract Transaction (On-Chain Verification)
+      const provider = new BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const clubContract = new Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+      
+      console.log("Sending transaction to Avalanche...");
+      const tx = await clubContract.joinClub();
+      
+      console.log("Waiting for confirmation... tx hash:", tx.hash);
+      await tx.wait(); // Wait for the transaction to be mined
+      
+      console.log("Transaction confirmed!");
+      
+      // 2. Save rich profile data to Firebase (Off-Chain Storage)
+      const newMember = {
+        address: walletAddress,
+        name,
+        studentId,
+        joinedAt: new Date().toLocaleString(),
+        timestamp: Date.now()
+      };
+      
+      try {
+        await addDoc(collection(db, "members"), newMember);
+      } catch (err) {
+        console.warn("Firebase not configured, skipping actual DB save but updating UI state.");
+      }
+      
+      // 3. Update UI Roster
+      setMembers((prev) => [newMember, ...prev]);
+      setHasJoined(true);
+    } catch (error: any) {
+      console.error("Transaction failed", error);
+      if (error.reason) {
+        alert("Transaction Failed: " + error.reason); // E.g., "You are already a member of this club!"
+      } else {
+        alert("Transaction failed. Make sure you have test AVAX and are on the Fuji Testnet.");
+      }
+    } finally {
+      setIsJoining(false);
     }
-    
-    setMembers((prev) => [newMember, ...prev]);
-    setHasJoined(true);
-    setIsJoining(false);
   };
 
   return (
@@ -139,7 +198,9 @@ export default function Home() {
             >
               <div className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 border border-amber-500/30 rounded-full">
                 <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="font-mono text-sm text-amber-200">{walletAddress}</span>
+                <span className="font-mono text-sm text-amber-200">
+                  {walletAddress.substring(0, 6)}...{walletAddress.substring(walletAddress.length - 4)}
+                </span>
               </div>
               <button
                 onClick={disconnectWallet}
@@ -250,7 +311,7 @@ export default function Home() {
                       {isJoining ? (
                         <>
                           <Loader2 className="w-6 h-6 animate-spin text-black" />
-                          Saving & Verifying...
+                          Confirming on Avalanche...
                         </>
                       ) : (
                         <>
@@ -303,7 +364,9 @@ export default function Home() {
                       <div>
                         <p className="font-semibold text-amber-50">{member.name}</p>
                         <p className="text-xs text-amber-500/70 font-mono">ID: {member.studentId}</p>
-                        <p className="text-xs text-slate-500 mt-1 font-mono group-hover:text-amber-500/50 transition-colors">{member.address}</p>
+                        <p className="text-xs text-slate-500 mt-1 font-mono group-hover:text-amber-500/50 transition-colors">
+                          {member.address.length > 20 ? `${member.address.substring(0, 6)}...${member.address.substring(member.address.length - 4)}` : member.address}
+                        </p>
                       </div>
                     </div>
                   </motion.div>
