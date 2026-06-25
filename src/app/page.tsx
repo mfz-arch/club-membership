@@ -8,7 +8,7 @@ import { ethers, BrowserProvider, Contract } from "ethers";
 
 declare global {
   interface Window {
-    ethereum?: any;
+    ethereum?: unknown;
   }
 }
 
@@ -43,6 +43,13 @@ export default function Home() {
   const [name, setName] = useState("");
   const [studentId, setStudentId] = useState("");
 
+  const loadMockData = () => {
+    setMembers([
+      { address: "0x1234...5678", name: "Alice Mwangi", studentId: "CS-2024-001", joinedAt: new Date(Date.now() - 86400000).toLocaleString() },
+      { address: "0x8765...4321", name: "John Doe", studentId: "IT-2024-042", joinedAt: new Date(Date.now() - 172800000).toLocaleString() }
+    ]);
+  };
+
   // Load members (Simulated/Firebase)
   useEffect(() => {
     const fetchMembers = async () => {
@@ -64,13 +71,6 @@ export default function Home() {
     
     fetchMembers();
   }, []);
-
-  const loadMockData = () => {
-    setMembers([
-      { address: "0x1234...5678", name: "Alice Mwangi", studentId: "CS-2024-001", joinedAt: new Date(Date.now() - 86400000).toLocaleString() },
-      { address: "0x8765...4321", name: "John Doe", studentId: "IT-2024-042", joinedAt: new Date(Date.now() - 172800000).toLocaleString() }
-    ]);
-  };
 
   // --- REAL WEB3 CONNECTION ---
   const connectWallet = async () => {
@@ -142,10 +142,10 @@ export default function Home() {
       // 3. Update UI Roster
       setMembers((prev) => [newMember, ...prev]);
       setHasJoined(true);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Transaction failed", error);
-      if (error.reason) {
-        alert("Transaction Failed: " + error.reason); // E.g., "You are already a member of this club!"
+      if (error instanceof Error) {
+        alert("Transaction Failed: " + error.message);
       } else {
         alert("Transaction failed. Make sure you have test AVAX and are on the Fuji Testnet.");
       }
