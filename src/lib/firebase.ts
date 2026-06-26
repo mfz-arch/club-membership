@@ -4,12 +4,13 @@ import { getFirestore, collection, addDoc, getDocs, query, orderBy } from "fireb
 // Your web app's Firebase configuration
 // For the hackathon, replace these with your actual Firebase Project Settings
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "mock-key",
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "mock-domain",
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "mock-project",
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "mock-bucket",
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "mock-sender",
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "mock-app-id"
+  apiKey: "AIzaSyBsPj7wHiB4wLbswNlatKoF96riU7QzWcE",
+  authDomain: "club-membership-cae5d.firebaseapp.com",
+  projectId: "club-membership-cae5d",
+  storageBucket: "club-membership-cae5d.firebasestorage.app",
+  messagingSenderId: "868248081949",
+  appId: "1:868248081949:web:bd4067a1f975768b6f58f4",
+  measurementId: "G-8PTZ94JNLM"
 };
 
 // Initialize Firebase only if it hasn't been initialized yet
