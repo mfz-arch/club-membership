@@ -45,6 +45,8 @@ export default function Page() {
 
   // Form States
   const [newClubName, setNewClubName] = useState("");
+  const [createName, setCreateName] = useState("");
+  const [createStudentId, setCreateStudentId] = useState("");
   const [isCreatingClub, setIsCreatingClub] = useState(false);
 
   const [joinClubId, setJoinClubId] = useState<number | null>(null);
@@ -155,6 +157,7 @@ export default function Page() {
   const handleCreateClub = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!walletAddress) return alert("Connect wallet first!");
+    if (!createName) return alert("Please enter your name");
     setIsCreatingClub(true);
     try {
       const provider = new BrowserProvider(window.ethereum!);
@@ -162,8 +165,32 @@ export default function Page() {
       const clubContract = new Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
       const tx = await clubContract.createClub(newClubName);
       await tx.wait();
+      
+      // Fetch the newly created club ID (it will be the last one the user joined)
+      const userJoinedClubs = await clubContract.getUserClubs(walletAddress);
+      const newClubId = Number(userJoinedClubs[userJoinedClubs.length - 1]);
+
+      // Save creator to Firebase
+      const newMember: Member = {
+        address: walletAddress,
+        name: createName,
+        studentId: createStudentId,
+        timestamp: new Date().toISOString(),
+        clubId: newClubId
+      };
+      
+      try {
+        const saveTask = addDoc(collection(db, "members"), newMember);
+        const timeout = new Promise((_, r) => setTimeout(() => r(new Error("Timeout")), 3000));
+        await Promise.race([saveTask, timeout]);
+      } catch (err) {
+        console.warn("Firebase skipped");
+      }
+
       alert("Club created successfully!");
       setNewClubName("");
+      setCreateName("");
+      setCreateStudentId("");
       // Reload user data
       await loadUserData(walletAddress);
       setActiveTab("myClubs");
@@ -448,6 +475,20 @@ export default function Page() {
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><ShieldCheck className="h-5 w-5 text-amber-500/50" /></div>
                       <input type="text" required value={newClubName} onChange={(e) => setNewClubName(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-black border border-white/10 rounded-xl focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 outline-none transition-all text-white" placeholder="e.g. Tanzania Web3 Builders" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">Your Full Name (Creator)</label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><User className="h-5 w-5 text-amber-500/50" /></div>
+                      <input type="text" required value={createName} onChange={(e) => setCreateName(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-black border border-white/10 rounded-xl focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 outline-none transition-all text-white" placeholder="John Doe" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">Your Student ID (Optional)</label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><IdCard className="h-5 w-5 text-amber-500/50" /></div>
+                      <input type="text" value={createStudentId} onChange={(e) => setCreateStudentId(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-black border border-white/10 rounded-xl focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 outline-none transition-all text-white" placeholder="CS-2024-001" />
                     </div>
                   </div>
                   <button type="submit" disabled={isCreatingClub} className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-400 hover:to-yellow-500 text-black rounded-xl font-bold text-lg shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 disabled:opacity-70">
