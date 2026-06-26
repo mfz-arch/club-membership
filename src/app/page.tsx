@@ -30,13 +30,18 @@ type Member = { address: string; name: string; studentId: string; timestamp: str
 export default function Page() {
   const [walletAddress, setWalletAddress] = useState<string>("");
   const [isConnecting, setIsConnecting] = useState(false);
-  const [activeTab, setActiveTab] = useState<"home" | "discover" | "myClubs" | "create">("home");
+  const [activeTab, setActiveTab] = useState<"home" | "discover" | "myClubs" | "create" | "clubDashboard">("home");
 
   // Blockchain & Firebase Data
   const [allClubs, setAllClubs] = useState<Club[]>([]);
   const [myClubIds, setMyClubIds] = useState<number[]>([]);
   const [isLoadingClubs, setIsLoadingClubs] = useState(true);
   const [recentMembers, setRecentMembers] = useState<Member[]>([]);
+  
+  // Dashboard State
+  const [selectedClubId, setSelectedClubId] = useState<number | null>(null);
+  const [clubMembers, setClubMembers] = useState<Member[]>([]);
+  const [isLoadingClubMembers, setIsLoadingClubMembers] = useState(false);
 
   // Form States
   const [newClubName, setNewClubName] = useState("");
@@ -131,6 +136,22 @@ export default function Page() {
   };
 
   // --- ACTIONS ---
+  const viewClubDashboard = async (clubId: number) => {
+    setSelectedClubId(clubId);
+    setActiveTab("clubDashboard");
+    setIsLoadingClubMembers(true);
+    try {
+      const q = query(collection(db, "members"), orderBy("timestamp", "desc"));
+      const snapshot = await getDocs(q);
+      const allMems = snapshot.docs.map(d => d.data() as Member);
+      setClubMembers(allMems.filter(m => m.clubId === clubId));
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsLoadingClubMembers(false);
+    }
+  };
+
   const handleCreateClub = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!walletAddress) return alert("Connect wallet first!");
@@ -406,7 +427,7 @@ export default function Page() {
                       <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 blur-3xl rounded-full" />
                       <h3 className="text-2xl font-bold text-white mb-2">{club.name}</h3>
                       <p className="text-slate-400 text-sm mb-6">You are a verified member.</p>
-                      <button className="w-full py-2.5 border border-amber-500/30 text-amber-400 hover:bg-amber-500/10 rounded-xl text-sm font-medium transition-colors">Enter Dashboard</button>
+                      <button onClick={() => viewClubDashboard(club.id)} className="w-full py-2.5 border border-amber-500/30 text-amber-400 hover:bg-amber-500/10 rounded-xl text-sm font-medium transition-colors">Enter Dashboard</button>
                     </div>
                   ))}
                 </div>
@@ -433,6 +454,49 @@ export default function Page() {
                     {isCreatingClub ? <><Loader2 className="w-5 h-5 animate-spin" /> Deploying...</> : <><Sparkles className="w-5 h-5" /> Create Community</>}
                   </button>
                 </form>
+              </div>
+            </motion.div>
+          )}
+
+          {/* --- CLUB DASHBOARD TAB --- */}
+          {activeTab === "clubDashboard" && walletAddress && selectedClubId && (
+            <motion.div key="clubDashboard" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
+              <div className="flex items-center gap-4">
+                <button onClick={() => setActiveTab("myClubs")} className="p-2 text-slate-400 hover:text-white bg-[#111] border border-white/10 rounded-xl">
+                  <span className="text-xl">←</span>
+                </button>
+                <h2 className="text-3xl font-bold text-white">Club #{selectedClubId} Dashboard</h2>
+              </div>
+              
+              <div className="h-[500px] flex flex-col rounded-3xl bg-[#111] border border-amber-500/20 shadow-2xl overflow-hidden">
+                <div className="p-6 border-b border-amber-500/20 bg-black/40 flex items-center justify-between">
+                  <h3 className="font-semibold text-lg text-amber-100">Verified Members</h3>
+                  <div className="px-3 py-1 bg-amber-500/10 border border-amber-500/30 rounded-full text-xs font-medium font-mono text-amber-300">
+                    {clubMembers.length} Joined
+                  </div>
+                </div>
+                <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
+                  {isLoadingClubMembers ? (
+                    <div className="flex justify-center py-10"><Loader2 className="w-8 h-8 animate-spin text-amber-500" /></div>
+                  ) : clubMembers.length === 0 ? (
+                    <div className="text-center py-10 text-slate-500 text-sm">No off-chain profile data found for this club yet.</div>
+                  ) : (
+                    clubMembers.map((member, idx) => (
+                      <div key={idx} className="flex items-center justify-between p-4 rounded-2xl bg-black/40 border border-amber-500/10 hover:border-amber-500/30 transition-colors">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-yellow-600 flex items-center justify-center text-black font-bold">
+                            {member.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="font-semibold text-amber-50">{member.name}</p>
+                            <p className="text-xs text-amber-500/70 font-mono">ID: {member.studentId || "N/A"}</p>
+                            <p className="text-xs text-slate-500 font-mono mt-1">{member.address}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
             </motion.div>
           )}
