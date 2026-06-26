@@ -4,11 +4,11 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Wallet, ShieldCheck, Users, Activity, Loader2, Sparkles, LogOut, CheckCircle2, User, IdCard } from "lucide-react";
 import { db, collection, addDoc, getDocs, query, orderBy } from "@/lib/firebase";
-import { BrowserProvider, Contract } from "ethers";
+import { BrowserProvider, Contract, type Eip1193Provider } from "ethers";
 
 declare global {
   interface Window {
-    ethereum?: unknown;
+    ethereum?: Eip1193Provider;
   }
 }
 
@@ -82,7 +82,7 @@ export default function Home() {
 
     setIsConnecting(true);
     try {
-      const provider = new BrowserProvider(window.ethereum);
+      const provider = new BrowserProvider(window.ethereum!);
       // Request access to the user's wallet
       const accounts = await provider.send("eth_requestAccounts", []);
       
@@ -113,7 +113,7 @@ export default function Home() {
     
     try {
       // 1. Send Smart Contract Transaction (On-Chain Verification)
-      const provider = new BrowserProvider(window.ethereum);
+      const provider = new BrowserProvider(window.ethereum!);
       const signer = await provider.getSigner();
       const clubContract = new Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
       
