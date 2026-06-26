@@ -1,5 +1,5 @@
 import { initializeApp, getApps } from "firebase/app";
-import { getFirestore, collection, addDoc, getDocs, query, orderBy } from "firebase/firestore";
+import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit } from "firebase/firestore";
 
 // Your web app's Firebase configuration
 // For the hackathon, replace these with your actual Firebase Project Settings
@@ -17,4 +17,4 @@ const firebaseConfig = {
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
 const db = getFirestore(app);
 
-export { db, collection, addDoc, getDocs, query, orderBy };
+export { db, collection, addDoc, getDocs, query, orderBy, limit };
